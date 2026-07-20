@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+  animation-fill-mode: both;
+}
+/* Hide horizontal scrollbar */
+html, body {
+  overflow-x: hidden;
+}
+
+.no-scroll {
+  overflow: hidden !important;
+  height: 100vh !important;
+  touch-action: none;
+}
+
+@layer base {
+  body {
+    @apply font-inter text-text-dark bg-bg-soft antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-poppins font-bold tracking-tight text-text-dark;
+  }
+  h1 { @apply text-[36px]; }
+  h2 { @apply text-[28px]; }
+  h3 { @apply text-[20px]; }
+  p { @apply text-[16px] text-text-muted; }
+  small { @apply text-[14px]; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-blue text-white font-semibold rounded-[12px] hover:bg-blue-700 transition-colors shadow-soft hover:shadow-md outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1;
+  }
+  .btn-cta {
+    @apply bg-brand-green text-white font-semibold rounded-[12px] hover:bg-green-600 transition-colors shadow-soft hover:shadow-md outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1;
+  }
+  .card-premium {
+    @apply bg-bg-white rounded-[12px] shadow-soft border border-gray-100 overflow-hidden transition-all duration-300;
+  }
+}
