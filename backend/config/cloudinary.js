@@ -32,9 +32,9 @@ const uploadToCloudinary = (fileBuffer, folder = "house-rent-sell") => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
+        upload_preset: "ml_default1",
         folder,
         resource_type: "image",
-        transformation: [{ width: 1200, height: 900, crop: "limit", quality: "auto" }],
       },
       (error, result) => {
         if (error) return reject(error);
