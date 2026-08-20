@@ -20,12 +20,25 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ── DEBUG: Check Cloudinary Env ──────────────────────────────────────────────
-router.get("/debug-env", (req, res) => {
+// ── DEBUG: Test Cloudinary Connection ────────────────────────────────────────
+router.get("/debug-env", async (req, res) => {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME || "";
+  const apiKey = process.env.CLOUDINARY_API_KEY || "";
+  const apiSecret = process.env.CLOUDINARY_API_SECRET || "";
+
+  let cloudinaryTest = "not tested";
+  try {
+    const result = await cloudinary.api.ping();
+    cloudinaryTest = "✅ CONNECTED: " + JSON.stringify(result);
+  } catch (e) {
+    cloudinaryTest = "❌ FAILED: " + e.message;
+  }
+
   res.json({
-    cloud_name_set: !!process.env.CLOUDINARY_CLOUD_NAME,
-    api_key_set: !!process.env.CLOUDINARY_API_KEY,
-    api_secret_set: !!process.env.CLOUDINARY_API_SECRET,
+    cloud_name: cloudName.substring(0, 4) + "..." + cloudName.slice(-2),
+    api_key: apiKey.substring(0, 4) + "..." + apiKey.slice(-2),
+    api_secret_length: apiSecret.length,
+    cloudinary_ping: cloudinaryTest,
     mongo_set: !!process.env.MONGO_URI
   });
 });
