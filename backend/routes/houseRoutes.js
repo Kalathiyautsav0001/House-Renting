@@ -20,6 +20,16 @@ router.get("/", async (req, res) => {
   }
 });
 
+// ── DEBUG: Check Cloudinary Env ──────────────────────────────────────────────
+router.get("/debug-env", (req, res) => {
+  res.json({
+    cloud_name_set: !!process.env.CLOUDINARY_CLOUD_NAME,
+    api_key_set: !!process.env.CLOUDINARY_API_KEY,
+    api_secret_set: !!process.env.CLOUDINARY_API_SECRET,
+    mongo_set: !!process.env.MONGO_URI
+  });
+});
+
 // ── ADMIN: Get all houses including hidden ───────────────────────────────────
 router.get("/admin/all", authMiddleware, async (req, res) => {
   try {
