@@ -100,79 +100,84 @@ router.get("/:id", async (req, res) => {
 });
 
 // ── PRIVATE: Add house with Cloudinary images ────────────────────────────────
-router.post("/", authMiddleware, upload.array("images", 20), async (req, res) => {
-  try {
-    const houseData = { ...req.body, owner: req.user.id };
-
-    if (req.files && req.files.length > 0) {
-      houseData.images = req.files.map((file) => file.path);
-    }
-
-    if (!houseData.mobileNumber) {
-      return res.status(400).json({
+router.post("/", authMiddleware, (req, res) => {
+  // Wrap multer upload in a callback so Cloudinary errors are catchable
+  upload.array("images", 20)(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      console.error("❌ UPLOAD ERROR:", uploadErr);
+      return res.status(500).json({
         success: false,
-        message: "Mobile number is required",
+        message: "Image upload failed: " + (uploadErr.message || uploadErr.toString()),
       });
     }
 
-    if (!houseData.whatsAppNumber) {
-      return res.status(400).json({
-        success: false,
-        message: "WhatsApp number is required",
-      });
-    }
-
-    const house = new House(houseData);
-    await house.save();
-
-    console.log("✅ House created:", house._id);
-
-    // Email notifications
     try {
-      const subscribers = await Subscription.find();
+      console.log("📦 Body keys:", Object.keys(req.body));
+      console.log("📸 Files received:", req.files?.length || 0);
 
-      if (house.location) {
-        const matchingSubscribers = subscribers.filter(
-          (sub) =>
-            sub.location &&
-            (
-              house.location
-                .toLowerCase()
-                .includes(sub.location.toLowerCase()) ||
-              sub.location
-                .toLowerCase()
-                .includes(house.location.toLowerCase())
-            )
-        );
+      const houseData = { ...req.body, owner: req.user.id };
 
-        if (matchingSubscribers.length > 0) {
-          console.log(`Sending notifications to ${matchingSubscribers.length} subscribers...`);
-          matchingSubscribers.forEach((sub) => {
-            sendListingNotification(sub.email, house).catch((err) =>
-              console.error("Notification failed for", sub.email, err)
-            );
-          });
-        }
+      if (req.files && req.files.length > 0) {
+        houseData.images = req.files.map((file) => file.path);
+        console.log("🖼️ Image URLs:", houseData.images);
       }
-    } catch (notifErr) {
-      console.error("Notification error:", notifErr);
+
+      if (!houseData.mobileNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile number is required",
+        });
+      }
+
+      if (!houseData.whatsAppNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "WhatsApp number is required",
+        });
+      }
+
+      const house = new House(houseData);
+      await house.save();
+
+      console.log("✅ House created:", house._id);
+
+      // Email notifications (non-blocking)
+      try {
+        const subscribers = await Subscription.find();
+        if (house.location) {
+          const matchingSubscribers = subscribers.filter(
+            (sub) =>
+              sub.location &&
+              (
+                house.location.toLowerCase().includes(sub.location.toLowerCase()) ||
+                sub.location.toLowerCase().includes(house.location.toLowerCase())
+              )
+          );
+          if (matchingSubscribers.length > 0) {
+            matchingSubscribers.forEach((sub) => {
+              sendListingNotification(sub.email, house).catch((err) =>
+                console.error("Notification failed for", sub.email, err)
+              );
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.error("Notification error:", notifErr);
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: "House added successfully",
+        house,
+      });
+    } catch (err) {
+      console.error("❌ ADD HOUSE ERROR:", err.message);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to add house",
+      });
     }
-
-    return res.status(201).json({
-      success: true,
-      message: "House added successfully",
-      house,
-    });
-  } catch (err) {
-    console.error("❌ ADD HOUSE ERROR:", err);
-    console.error("❌ Message:", err.message);
-    console.error("❌ Stack:", err.stack);
-
-    return res.status(500).json({
-      success: false,
-      message: err.message || "Failed to add house",
-    });
-  }
+  });
 });
 
 // ── PRIVATE: Update house ────────────────────────────────────────────────────
