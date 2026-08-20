@@ -21,6 +21,7 @@ import {
 } from "react-icons/fa";
 import MapSelector from "../components/MapSelector";
 import { analyzeImage } from "../utils/imageAI";
+import { uploadMultipleToCloudinary } from "../utils/cloudinaryUpload";
 import { FaExclamationTriangle } from "react-icons/fa";
 
 /* ─── Reusable styled input field ──────────────────────────────────────── */
@@ -238,20 +239,19 @@ export default function EditHotel() {
 
     setSaving(true);
     try {
-      const formData = new FormData();
-      Object.keys(form).forEach((key) => {
-        if (form[key] !== null) {
-          formData.append(key, form[key]);
-        }
-      });
-      
-      if (images) {
-        for (let i = 0; i < images.length; i++) {
-          formData.append("images", images[i]);
-        }
+      let uploadedImageUrls = [];
+      if (images && images.length > 0) {
+        uploadedImageUrls = await uploadMultipleToCloudinary(images, "house-rent-sell/rooms");
       }
 
-      await API.put(`/rooms/${id}`, formData);
+      const payload = {
+        ...form,
+      };
+      if (uploadedImageUrls.length > 0) {
+        payload.images = uploadedImageUrls;
+      }
+
+      await API.put(`/rooms/${id}`, payload);
       setSaved(true);
       setTimeout(() => navigate("/my-houses"), 1200);
     } catch (err) {

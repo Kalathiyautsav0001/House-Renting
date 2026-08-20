@@ -138,11 +138,7 @@ export default function MyHouses() {
   // ── Visibility Toggle ──────────────────────────────────────────────────────
   const toggleHouseVisibility = async (id, currentStatus) => {
     try {
-      const formData = new FormData();
-      formData.append("isPublic", !currentStatus ? "true" : "false");
-      const res = await API.put(`/houses/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await API.put(`/houses/${id}`, { isPublic: !currentStatus });
       setHouses((prev) => prev.map((h) => (h._id === id ? res.data : h)));
     } catch (err) {
       console.error("Error toggling house visibility:", err);
@@ -151,11 +147,7 @@ export default function MyHouses() {
 
   const toggleRoomVisibility = async (id, currentStatus) => {
     try {
-      const formData = new FormData();
-      formData.append("isPublic", !currentStatus ? "true" : "false");
-      const res = await API.put(`/rooms/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await API.put(`/rooms/${id}`, { isPublic: !currentStatus });
       setRooms((prev) => prev.map((r) => (r._id === id ? res.data : r)));
     } catch (err) {
       console.error("Error toggling room visibility:", err);
@@ -164,11 +156,7 @@ export default function MyHouses() {
 
   const toggleCommercialVisibility = async (id, currentStatus) => {
     try {
-      const formData = new FormData();
-      formData.append("isPublic", !currentStatus ? "true" : "false");
-      const res = await API.put(`/commercial/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await API.put(`/commercial/${id}`, { isPublic: !currentStatus });
       setCommercials((prev) => prev.map((c) => (c._id === id ? res.data : c)));
     } catch (err) {
       console.error("Error toggling commercial visibility:", err);
@@ -178,11 +166,7 @@ export default function MyHouses() {
   // ── Status Updates (Sold/Rented for House, etc) ──────────────────────────
   const updateHouseStatus = async (id, newStatus) => {
     try {
-      const formData = new FormData();
-      formData.append("status", newStatus);
-      const res = await API.put(`/houses/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await API.put(`/houses/${id}`, { status: newStatus });
       setHouses((prev) => prev.map((h) => (h._id === id ? res.data : h)));
     } catch (err) {
       console.error("Error updating house status:", err);
@@ -191,11 +175,7 @@ export default function MyHouses() {
 
   const updateRoomStatus = async (id, newStatus) => {
     try {
-      const formData = new FormData();
-      formData.append("status", newStatus);
-      const res = await API.put(`/rooms/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await API.put(`/rooms/${id}`, { status: newStatus });
       setRooms((prev) => prev.map((r) => (r._id === id ? res.data : r)));
     } catch (err) {
       console.error("Error updating room status:", err);
@@ -204,11 +184,7 @@ export default function MyHouses() {
 
   const updateCommercialStatus = async (id, newStatus) => {
     try {
-      const formData = new FormData();
-      formData.append("status", newStatus);
-      const res = await API.put(`/commercial/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const res = await API.put(`/commercial/${id}`, { status: newStatus });
       setCommercials((prev) => prev.map((c) => (c._id === id ? res.data : c)));
     } catch (err) {
       console.error("Error updating commercial status:", err);

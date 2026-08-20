@@ -21,6 +21,7 @@ import {
 import { LuMapPin, LuType, LuLayers, LuInfo } from "react-icons/lu";
 import MapSelector from "../components/MapSelector";
 import { analyzeImage } from "../utils/imageAI";
+import { uploadMultipleToCloudinary } from "../utils/cloudinaryUpload";
 
 /* ─── Reusable styled input field ──────────────────────────────────────── */
 function Field({ label, icon, hint, error, ...props }) {
@@ -233,15 +234,20 @@ export default function EditCommercial() {
 
     setSaving(true);
     try {
-      const formData = new FormData();
-      Object.keys(form).forEach((key) => {
-        if (form[key] !== null) formData.append(key, form[key]);
-      });
-      formData.append("amenities", JSON.stringify(selectedBusinessAmenities));
-      if (images) {
-        for (let i = 0; i < images.length; i++) formData.append("images", images[i]);
+      let uploadedImageUrls = [];
+      if (images && images.length > 0) {
+        uploadedImageUrls = await uploadMultipleToCloudinary(images, "house-rent-sell/commercial");
       }
-      await API.put(`/commercial/${id}`, formData);
+
+      const payload = {
+        ...form,
+        amenities: selectedBusinessAmenities,
+      };
+      if (uploadedImageUrls.length > 0) {
+        payload.images = uploadedImageUrls;
+      }
+
+      await API.put(`/commercial/${id}`, payload);
       setSaved(true);
       setTimeout(() => navigate("/my-houses"), 1200);
     } catch (err) {

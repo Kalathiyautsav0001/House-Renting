@@ -1,37 +1,27 @@
 import express from "express";
 import Commercial from "../models/Commercial.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { cloudinary, upload, uploadToCloudinary } from "../config/cloudinary.js";
+import { cloudinary } from "../config/cloudinary.js";
 
 const router = express.Router();
 
-// ── PRIVATE: Add commercial (memory storage → Cloudinary stream) ──────────────
-router.post("/", authMiddleware, (req, res) => {
-  upload.array("images", 20)(req, res, async (uploadErr) => {
-    if (uploadErr) {
-      return res.status(400).json({ success: false, message: uploadErr.message });
+// ── PRIVATE: Add commercial ──────────────────────────────────────────────────
+router.post("/", authMiddleware, async (req, res) => {
+  try {
+    const commercialData = { ...req.body, owner: req.user.id };
+
+    if (commercialData.amenities && typeof commercialData.amenities === "string") {
+      try { commercialData.amenities = JSON.parse(commercialData.amenities); }
+      catch (e) { console.log("Amenities parse failed"); }
     }
-    try {
-      const commercialData = { ...req.body, owner: req.user.id };
 
-      if (commercialData.amenities) {
-        try { commercialData.amenities = JSON.parse(commercialData.amenities); }
-        catch (e) { console.log("Amenities parse failed"); }
-      }
-
-      if (req.files && req.files.length > 0) {
-        const uploadPromises = req.files.map((f) => uploadToCloudinary(f.buffer, "house-rent-sell/commercial"));
-        commercialData.images = await Promise.all(uploadPromises);
-      }
-
-      const listing = new Commercial(commercialData);
-      await listing.save();
-      res.status(201).json(listing);
-    } catch (err) {
-      console.error("❌ ADD COMMERCIAL ERROR:", err.message);
-      res.status(500).json({ success: false, message: err.message || "Failed to add listing" });
-    }
-  });
+    const listing = new Commercial(commercialData);
+    await listing.save();
+    res.status(201).json(listing);
+  } catch (err) {
+    console.error("❌ ADD COMMERCIAL ERROR:", err.message);
+    res.status(500).json({ success: false, message: err.message || "Failed to add listing" });
+  }
 });
 
 // ── PUBLIC: Get all commercial listings ─────────────────────────────────────
@@ -104,7 +94,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // ── PRIVATE: Update commercial listing ──────────────────────────────────────
-router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) => {
+router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const listing = await Commercial.findOne({
       _id: req.params.id,
@@ -112,22 +102,8 @@ router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) 
     });
     if (!listing) return res.status(403).json({ error: "Not authorized or listing not found" });
 
-    Object.keys(req.body).forEach((key) => {
-      if (key === "isPublic") {
-        listing[key] = req.body[key] === true || req.body[key] === "true";
-      } else if (key === "amenities") {
-        try {
-          listing[key] = JSON.parse(req.body[key]);
-        } catch (e) {
-          listing[key] = req.body[key];
-        }
-      } else {
-        listing[key] = req.body[key];
-      }
-    });
-
-    if (req.files && req.files.length > 0) {
-      // Delete old Cloudinary images
+    // Delete old Cloudinary images if new ones provided
+    if (req.body.images && Array.isArray(req.body.images) && req.body.images.length > 0) {
       if (listing.images && listing.images.length > 0) {
         for (const imgUrl of listing.images) {
           try {
@@ -140,8 +116,21 @@ router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) 
           }
         }
       }
-      listing.images = req.files.map((f) => f.path);
     }
+
+    Object.keys(req.body).forEach((key) => {
+      if (key === "isPublic") {
+        listing[key] = req.body[key] === true || req.body[key] === "true";
+      } else if (key === "amenities" && typeof req.body[key] === "string") {
+        try {
+          listing[key] = JSON.parse(req.body[key]);
+        } catch (e) {
+          listing[key] = req.body[key];
+        }
+      } else {
+        listing[key] = req.body[key];
+      }
+    });
 
     const updatedListing = await listing.save();
     res.json(updatedListing);

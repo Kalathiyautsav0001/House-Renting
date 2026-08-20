@@ -1,7 +1,7 @@
 import express from "express";
 import HotelRoom from "../models/HotelRoom.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { cloudinary, upload, uploadToCloudinary } from "../config/cloudinary.js";
+import { cloudinary } from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -74,57 +74,33 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ── PRIVATE: Create room (memory storage → Cloudinary stream) ────────────────
-router.post("/", authMiddleware, (req, res) => {
-  upload.array("images", 20)(req, res, async (uploadErr) => {
-    if (uploadErr) {
-      return res.status(400).json({ success: false, message: uploadErr.message });
+// ── PRIVATE: Create room ─────────────────────────────────────────────────────
+router.post("/", authMiddleware, async (req, res) => {
+  try {
+    const roomData = { ...req.body, owner: req.user.id };
+
+    if (typeof roomData.amenities === "string") {
+      try { roomData.amenities = JSON.parse(roomData.amenities); }
+      catch { roomData.amenities = []; }
     }
-    try {
-      const roomData = { ...req.body, owner: req.user.id };
 
-      if (typeof roomData.amenities === "string") {
-        try { roomData.amenities = JSON.parse(roomData.amenities); }
-        catch { roomData.amenities = []; }
-      }
-
-      if (req.files && req.files.length > 0) {
-        const uploadPromises = req.files.map((f) => uploadToCloudinary(f.buffer, "house-rent-sell/rooms"));
-        roomData.images = await Promise.all(uploadPromises);
-      }
-
-      const room = new HotelRoom(roomData);
-      await room.save();
-      res.status(201).json(room);
-    } catch (err) {
-      console.error("❌ ADD ROOM ERROR:", err.message);
-      res.status(500).json({ success: false, message: err.message || "Failed to add room" });
-    }
-  });
+    const room = new HotelRoom(roomData);
+    await room.save();
+    res.status(201).json(room);
+  } catch (err) {
+    console.error("❌ ADD ROOM ERROR:", err.message);
+    res.status(500).json({ success: false, message: err.message || "Failed to add room" });
+  }
 });
 
 // ── PRIVATE: Update room ─────────────────────────────────────────────────────
-router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) => {
+router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const room = await HotelRoom.findOne({ _id: req.params.id, owner: req.user.id });
     if (!room) return res.status(403).json({ error: "Not authorized or room not found" });
 
-    Object.keys(req.body).forEach((key) => {
-      if (key === "isPublic") {
-        room[key] = req.body[key] === true || req.body[key] === "true";
-      } else if (key === "amenities") {
-        try {
-          room[key] = JSON.parse(req.body[key]);
-        } catch {
-          room[key] = [];
-        }
-      } else {
-        room[key] = req.body[key];
-      }
-    });
-
-    if (req.files && req.files.length > 0) {
-      // Delete old Cloudinary images
+    // If new images provided, delete old Cloudinary images
+    if (req.body.images && Array.isArray(req.body.images) && req.body.images.length > 0) {
       if (room.images && room.images.length > 0) {
         for (const imgUrl of room.images) {
           try {
@@ -137,8 +113,21 @@ router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) 
           }
         }
       }
-      room.images = req.files.map((f) => f.path);
     }
+
+    Object.keys(req.body).forEach((key) => {
+      if (key === "isPublic") {
+        room[key] = req.body[key] === true || req.body[key] === "true";
+      } else if (key === "amenities" && typeof req.body[key] === "string") {
+        try {
+          room[key] = JSON.parse(req.body[key]);
+        } catch {
+          room[key] = [];
+        }
+      } else {
+        room[key] = req.body[key];
+      }
+    });
 
     const updatedRoom = await room.save();
     res.json(updatedRoom);

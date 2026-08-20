@@ -1,7 +1,7 @@
 import express from "express";
 import House from "../models/House.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { cloudinary, upload, uploadToCloudinary } from "../config/cloudinary.js";
+import { cloudinary } from "../config/cloudinary.js";
 import Subscription from "../models/Subscription.js";
 import { sendListingNotification } from "../utils/emailService.js";
 
@@ -112,95 +112,65 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ── PRIVATE: Add house (memory storage → Cloudinary stream) ─────────────────
-router.post("/", authMiddleware, (req, res) => {
-  upload.array("images", 20)(req, res, async (uploadErr) => {
-    if (uploadErr) {
-      console.error("❌ MULTER ERROR:", uploadErr.message);
-      return res.status(400).json({ success: false, message: uploadErr.message });
+// ── PRIVATE: Add house ───────────────────────────────────────────────────────
+router.post("/", authMiddleware, async (req, res) => {
+  try {
+    const houseData = { ...req.body, owner: req.user.id };
+
+    if (!houseData.mobileNumber) {
+      return res.status(400).json({ success: false, message: "Mobile number is required" });
+    }
+    if (!houseData.whatsAppNumber) {
+      return res.status(400).json({ success: false, message: "WhatsApp number is required" });
     }
 
+    const house = new House(houseData);
+    await house.save();
+    console.log("✅ House saved to DB:", house._id);
+
+    // Email notifications (non-blocking)
     try {
-      console.log("📦 Body keys:", Object.keys(req.body));
-      console.log("📸 Files received:", req.files?.length || 0);
-
-      const houseData = { ...req.body, owner: req.user.id };
-
-      // Upload each file buffer directly to Cloudinary via stream
-      if (req.files && req.files.length > 0) {
-        console.log("⬆️ Uploading", req.files.length, "images to Cloudinary...");
-        const uploadPromises = req.files.map((file) =>
-          uploadToCloudinary(file.buffer, "house-rent-sell")
-        );
-        houseData.images = await Promise.all(uploadPromises);
-        console.log("✅ Images uploaded:", houseData.images);
-      }
-
-      if (!houseData.mobileNumber) {
-        return res.status(400).json({ success: false, message: "Mobile number is required" });
-      }
-      if (!houseData.whatsAppNumber) {
-        return res.status(400).json({ success: false, message: "WhatsApp number is required" });
-      }
-
-      const house = new House(houseData);
-      await house.save();
-      console.log("✅ House saved to DB:", house._id);
-
-      // Email notifications (non-blocking)
-      try {
-        const subscribers = await Subscription.find();
-        if (house.location) {
-          const matching = subscribers.filter(
-            (sub) =>
-              sub.location &&
-              (
-                house.location.toLowerCase().includes(sub.location.toLowerCase()) ||
-                sub.location.toLowerCase().includes(house.location.toLowerCase())
-              )
-          );
-          matching.forEach((sub) =>
-            sendListingNotification(sub.email, house).catch((e) =>
-              console.error("Notification failed:", sub.email, e.message)
+      const subscribers = await Subscription.find();
+      if (house.location) {
+        const matching = subscribers.filter(
+          (sub) =>
+            sub.location &&
+            (
+              house.location.toLowerCase().includes(sub.location.toLowerCase()) ||
+              sub.location.toLowerCase().includes(house.location.toLowerCase())
             )
-          );
-        }
-      } catch (notifErr) {
-        console.error("Notification error:", notifErr.message);
+        );
+        matching.forEach((sub) =>
+          sendListingNotification(sub.email, house).catch((e) =>
+            console.error("Notification failed:", sub.email, e.message)
+          )
+        );
       }
-
-      return res.status(201).json({ success: true, message: "House added successfully", house });
-    } catch (err) {
-      console.error("❌ ADD HOUSE ERROR:", err.message);
-      return res.status(500).json({
-        success: false,
-        message: err.message || "Failed to add house",
-      });
+    } catch (notifErr) {
+      console.error("Notification error:", notifErr.message);
     }
-  });
+
+    return res.status(201).json({ success: true, message: "House added successfully", house });
+  } catch (err) {
+    console.error("❌ ADD HOUSE ERROR:", err.message);
+    return res.status(500).json({
+      success: false,
+      message: err.message || "Failed to add house",
+    });
+  }
 });
 
 // ── PRIVATE: Update house ────────────────────────────────────────────────────
-router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) => {
+router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const house = await House.findOne({ _id: req.params.id, owner: req.user.id });
     if (!house) return res.status(403).json({ error: "Not authorized or house not found" });
 
-    Object.keys(req.body).forEach((key) => {
-      if (key === "furnished" || key === "parking" || key === "isPublic") {
-        house[key] = req.body[key] === true || req.body[key] === "true";
-      } else {
-        house[key] = req.body[key];
-      }
-    });
-
-    // Replace images only if new ones uploaded
-    if (req.files && req.files.length > 0) {
-      // Delete old Cloudinary images
+    // If new images provided, delete old images from Cloudinary
+    if (req.body.images && Array.isArray(req.body.images) && req.body.images.length > 0) {
       if (house.images && house.images.length > 0) {
         for (const imgUrl of house.images) {
           try {
-            // Extract public_id from Cloudinary URL
             const parts = imgUrl.split("/");
             const folderAndFile = parts.slice(-2).join("/");
             const publicId = folderAndFile.replace(/\.[^/.]+$/, "");
@@ -210,8 +180,15 @@ router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) 
           }
         }
       }
-      house.images = req.files.map((f) => f.path);
     }
+
+    Object.keys(req.body).forEach((key) => {
+      if (key === "furnished" || key === "parking" || key === "isPublic") {
+        house[key] = req.body[key] === true || req.body[key] === "true";
+      } else {
+        house[key] = req.body[key];
+      }
+    });
 
     const updatedHouse = await house.save();
     res.json(updatedHouse);

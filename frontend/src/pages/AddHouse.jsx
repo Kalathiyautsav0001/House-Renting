@@ -34,6 +34,7 @@ import {
 import { LuBed, LuBath, LuBox, LuCar, LuLayers, LuInfo, LuMapPin, LuType } from "react-icons/lu";
 import MapSelector from "../components/MapSelector";
 import { analyzeImage } from "../utils/imageAI";
+import { uploadMultipleToCloudinary } from "../utils/cloudinaryUpload";
 
 const ALL_AMENITIES = [
   { id: "AC",                 icon: <FaSnowflake className="text-blue-400" />,     label: "AC" },
@@ -380,46 +381,33 @@ export default function AddHouse() {
         return;
       }
 
+      // Upload images directly to Cloudinary first
+      let uploadedImageUrls = [];
+      if (images && images.length > 0) {
+        const folder = listingCategory === "hotel" ? "house-rent-sell/rooms" : listingCategory === "business" ? "house-rent-sell/commercial" : "house-rent-sell";
+        uploadedImageUrls = await uploadMultipleToCloudinary(images, folder);
+      }
+
       if (listingCategory === "house") {
-        const formData = new FormData();
-        Object.keys(form).forEach((key) => {
-          if (form[key] !== null && form[key] !== undefined) {
-             formData.append(key, form[key]);
-          }
-        });
-        if (images) {
-          for (let i = 0; i < images.length; i++) {
-            formData.append("images", images[i]);
-          }
-        }
-        await API.post("/houses", formData);
+        const payload = {
+          ...form,
+          images: uploadedImageUrls,
+        };
+        await API.post("/houses", payload);
       } else if (listingCategory === "hotel") {
-        const formData = new FormData();
-        Object.keys(hotelForm).forEach((key) => {
-          if (hotelForm[key] !== null && hotelForm[key] !== undefined) {
-             formData.append(key, hotelForm[key]);
-          }
-        });
-        formData.append("amenities", JSON.stringify(selectedAmenities));
-        if (images) {
-          for (let i = 0; i < images.length; i++) {
-            formData.append("images", images[i]);
-          }
-        }
-        await API.post("/rooms", formData);
+        const payload = {
+          ...hotelForm,
+          amenities: selectedAmenities,
+          images: uploadedImageUrls,
+        };
+        await API.post("/rooms", payload);
       } else if (listingCategory === "business") {
-        const formData = new FormData();
-        Object.keys(businessForm).forEach((key) => {
-          if (businessForm[key] !== null && businessForm[key] !== undefined) {
-             formData.append(key, businessForm[key]);
-          }
-        });
-        if (images) {
-          for (let i = 0; i < images.length; i++) {
-            formData.append("images", images[i]);
-          }
-        }
-        await API.post("/commercial", formData);
+        const payload = {
+          ...businessForm,
+          amenities: selectedBusinessAmenities,
+          images: uploadedImageUrls,
+        };
+        await API.post("/commercial", payload);
       }
 
       setSaved(true);
