@@ -1,7 +1,7 @@
 import express from "express";
 import House from "../models/House.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { cloudinary, upload } from "../config/cloudinary.js";
+import { cloudinary, upload, uploadToCloudinary } from "../config/cloudinary.js";
 import Subscription from "../models/Subscription.js";
 import { sendListingNotification } from "../utils/emailService.js";
 
@@ -112,16 +112,12 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ── PRIVATE: Add house with Cloudinary images ────────────────────────────────
+// ── PRIVATE: Add house (memory storage → Cloudinary stream) ─────────────────
 router.post("/", authMiddleware, (req, res) => {
-  // Wrap multer upload in a callback so Cloudinary errors are catchable
   upload.array("images", 20)(req, res, async (uploadErr) => {
     if (uploadErr) {
-      console.error("❌ UPLOAD ERROR:", uploadErr);
-      return res.status(500).json({
-        success: false,
-        message: "Image upload failed: " + (uploadErr.message || uploadErr.toString()),
-      });
+      console.error("❌ MULTER ERROR:", uploadErr.message);
+      return res.status(400).json({ success: false, message: uploadErr.message });
     }
 
     try {
@@ -130,35 +126,32 @@ router.post("/", authMiddleware, (req, res) => {
 
       const houseData = { ...req.body, owner: req.user.id };
 
+      // Upload each file buffer directly to Cloudinary via stream
       if (req.files && req.files.length > 0) {
-        houseData.images = req.files.map((file) => file.path);
-        console.log("🖼️ Image URLs:", houseData.images);
+        console.log("⬆️ Uploading", req.files.length, "images to Cloudinary...");
+        const uploadPromises = req.files.map((file) =>
+          uploadToCloudinary(file.buffer, "house-rent-sell")
+        );
+        houseData.images = await Promise.all(uploadPromises);
+        console.log("✅ Images uploaded:", houseData.images);
       }
 
       if (!houseData.mobileNumber) {
-        return res.status(400).json({
-          success: false,
-          message: "Mobile number is required",
-        });
+        return res.status(400).json({ success: false, message: "Mobile number is required" });
       }
-
       if (!houseData.whatsAppNumber) {
-        return res.status(400).json({
-          success: false,
-          message: "WhatsApp number is required",
-        });
+        return res.status(400).json({ success: false, message: "WhatsApp number is required" });
       }
 
       const house = new House(houseData);
       await house.save();
-
-      console.log("✅ House created:", house._id);
+      console.log("✅ House saved to DB:", house._id);
 
       // Email notifications (non-blocking)
       try {
         const subscribers = await Subscription.find();
         if (house.location) {
-          const matchingSubscribers = subscribers.filter(
+          const matching = subscribers.filter(
             (sub) =>
               sub.location &&
               (
@@ -166,23 +159,17 @@ router.post("/", authMiddleware, (req, res) => {
                 sub.location.toLowerCase().includes(house.location.toLowerCase())
               )
           );
-          if (matchingSubscribers.length > 0) {
-            matchingSubscribers.forEach((sub) => {
-              sendListingNotification(sub.email, house).catch((err) =>
-                console.error("Notification failed for", sub.email, err)
-              );
-            });
-          }
+          matching.forEach((sub) =>
+            sendListingNotification(sub.email, house).catch((e) =>
+              console.error("Notification failed:", sub.email, e.message)
+            )
+          );
         }
       } catch (notifErr) {
-        console.error("Notification error:", notifErr);
+        console.error("Notification error:", notifErr.message);
       }
 
-      return res.status(201).json({
-        success: true,
-        message: "House added successfully",
-        house,
-      });
+      return res.status(201).json({ success: true, message: "House added successfully", house });
     } catch (err) {
       console.error("❌ ADD HOUSE ERROR:", err.message);
       return res.status(500).json({

@@ -1,34 +1,37 @@
 import express from "express";
 import Commercial from "../models/Commercial.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { cloudinary, upload } from "../config/cloudinary.js";
+import { cloudinary, upload, uploadToCloudinary } from "../config/cloudinary.js";
 
 const router = express.Router();
 
-// ── PRIVATE: Add commercial listing ─────────────────────────────────────────
-router.post("/", authMiddleware, upload.array("images", 20), async (req, res) => {
-  try {
-    const commercialData = { ...req.body, owner: req.user.id };
+// ── PRIVATE: Add commercial (memory storage → Cloudinary stream) ──────────────
+router.post("/", authMiddleware, (req, res) => {
+  upload.array("images", 20)(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({ success: false, message: uploadErr.message });
+    }
+    try {
+      const commercialData = { ...req.body, owner: req.user.id };
 
-    if (commercialData.amenities) {
-      try {
-        commercialData.amenities = JSON.parse(commercialData.amenities);
-      } catch (e) {
-        console.log("Amenities parsing failed, keeping as is.");
+      if (commercialData.amenities) {
+        try { commercialData.amenities = JSON.parse(commercialData.amenities); }
+        catch (e) { console.log("Amenities parse failed"); }
       }
-    }
 
-    if (req.files && req.files.length > 0) {
-      commercialData.images = req.files.map((file) => file.path);
-    }
+      if (req.files && req.files.length > 0) {
+        const uploadPromises = req.files.map((f) => uploadToCloudinary(f.buffer, "house-rent-sell/commercial"));
+        commercialData.images = await Promise.all(uploadPromises);
+      }
 
-    const listing = new Commercial(commercialData);
-    await listing.save();
-    res.status(201).json(listing);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to add commercial listing" });
-  }
+      const listing = new Commercial(commercialData);
+      await listing.save();
+      res.status(201).json(listing);
+    } catch (err) {
+      console.error("❌ ADD COMMERCIAL ERROR:", err.message);
+      res.status(500).json({ success: false, message: err.message || "Failed to add listing" });
+    }
+  });
 });
 
 // ── PUBLIC: Get all commercial listings ─────────────────────────────────────

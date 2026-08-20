@@ -1,7 +1,7 @@
 import express from "express";
 import HotelRoom from "../models/HotelRoom.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import { cloudinary, upload } from "../config/cloudinary.js";
+import { cloudinary, upload, uploadToCloudinary } from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -74,30 +74,33 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ── PRIVATE: Create room ─────────────────────────────────────────────────────
-router.post("/", authMiddleware, upload.array("images", 20), async (req, res) => {
-  try {
-    const roomData = { ...req.body, owner: req.user.id };
+// ── PRIVATE: Create room (memory storage → Cloudinary stream) ────────────────
+router.post("/", authMiddleware, (req, res) => {
+  upload.array("images", 20)(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({ success: false, message: uploadErr.message });
+    }
+    try {
+      const roomData = { ...req.body, owner: req.user.id };
 
-    if (typeof roomData.amenities === "string") {
-      try {
-        roomData.amenities = JSON.parse(roomData.amenities);
-      } catch {
-        roomData.amenities = [];
+      if (typeof roomData.amenities === "string") {
+        try { roomData.amenities = JSON.parse(roomData.amenities); }
+        catch { roomData.amenities = []; }
       }
-    }
 
-    if (req.files && req.files.length > 0) {
-      roomData.images = req.files.map((file) => file.path);
-    }
+      if (req.files && req.files.length > 0) {
+        const uploadPromises = req.files.map((f) => uploadToCloudinary(f.buffer, "house-rent-sell/rooms"));
+        roomData.images = await Promise.all(uploadPromises);
+      }
 
-    const room = new HotelRoom(roomData);
-    await room.save();
-    res.status(201).json(room);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to add room" });
-  }
+      const room = new HotelRoom(roomData);
+      await room.save();
+      res.status(201).json(room);
+    } catch (err) {
+      console.error("❌ ADD ROOM ERROR:", err.message);
+      res.status(500).json({ success: false, message: err.message || "Failed to add room" });
+    }
+  });
 });
 
 // ── PRIVATE: Update room ─────────────────────────────────────────────────────
