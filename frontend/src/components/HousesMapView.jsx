@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import L from "leaflet";
 import Slider from "react-slick";
 import axios from "axios";
+import { API_BASE_URL, getImageUrl } from "../utils/api";
 
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -100,13 +101,13 @@ const HousesMapView = ({ houses, rooms: externalRooms, show = "both" }) => {
 
   useEffect(() => {
     if (!houses && (show === "houses" || show === "both")) {
-      axios.get("http://localhost:5000/api/houses").then(r => setFetchedHouses(r.data)).catch(() => {});
+      axios.get(`${API_BASE_URL}/api/houses`).then(r => setFetchedHouses(r.data)).catch(() => {});
     }
     if (!externalRooms && (show === "rooms" || show === "both")) {
-      axios.get("http://localhost:5000/api/rooms").then(r => setFetchedRooms(r.data)).catch(() => {});
+      axios.get(`${API_BASE_URL}/api/rooms`).then(r => setFetchedRooms(r.data)).catch(() => {});
     }
     if (show === "commercial") {
-      axios.get("http://localhost:5000/api/commercial").then(r => setFetchedCommercial(r.data)).catch(() => {});
+      axios.get(`${API_BASE_URL}/api/commercial`).then(r => setFetchedCommercial(r.data)).catch(() => {});
     }
   }, [show]);
 
@@ -263,7 +264,7 @@ const HousesMapView = ({ houses, rooms: externalRooms, show = "both" }) => {
                     <Slider {...sliderSettings} className="h-full w-full">
                       {activePopup.images.map((img, i) => (
                         <div key={i} className="h-40 w-full">
-                          <img src={`http://localhost:5000${img}`} className="w-full h-full object-cover" alt="" />
+                          <img src={getImageUrl(img)} className="w-full h-full object-cover" alt="" />
                         </div>
                       ))}
                     </Slider>

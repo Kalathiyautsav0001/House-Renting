@@ -12,6 +12,7 @@ import { LuMaximize, LuMapPin, LuUser, LuZap, LuLayers, LuBox, LuActivity } from
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { API_BASE_URL, getImageUrl } from "../utils/api";
 
 // Fix for default marker icon in Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -43,7 +44,7 @@ export default function CommercialDetails() {
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/commercial/${id}`);
+        const res = await axios.get(`${API_BASE_URL}/api/commercial/${id}`);
         setListing(res.data);
         setLoading(false);
         fetchSimilar(res.data);
@@ -57,7 +58,7 @@ export default function CommercialDetails() {
 
   const fetchSimilar = async (current) => {
     try {
-      const res = await axios.get("http://localhost:5000/api/commercial");
+      const res = await axios.get(`${API_BASE_URL}/api/commercial`);
       const filtered = res.data.filter(l => l._id !== current._id && l.type === current.type).slice(0, 3);
       setSimilarListings(filtered);
     } catch (err) { console.error(err); }
@@ -160,7 +161,7 @@ export default function CommercialDetails() {
                    <Slider {...sliderSettings}>
                      {listing.images.map((img, index) => (
                        <div key={index} className="outline-none relative aspect-[16/10] sm:aspect-video">
-                         <img src={`http://localhost:5000${img}`} alt="" className="w-full h-full object-cover" />
+                         <img src={getImageUrl(img)} alt="" className="w-full h-full object-cover" />
                        </div>
                      ))}
                    </Slider>

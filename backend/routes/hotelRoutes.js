@@ -1,18 +1,9 @@
 import express from "express";
 import HotelRoom from "../models/HotelRoom.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { cloudinary, upload } from "../config/cloudinary.js";
 
 const router = express.Router();
-
-// Multer setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
-});
-const upload = multer({ storage });
 
 // ── PUBLIC: Get all rooms ────────────────────────────────────────────────────
 router.get("/", async (req, res) => {
@@ -59,7 +50,10 @@ router.put("/admin/toggle-hide/:id", authMiddleware, async (req, res) => {
 // ── PRIVATE: Get logged-in user's rooms ─────────────────────────────────────
 router.get("/my-rooms", authMiddleware, async (req, res) => {
   try {
-    const rooms = await HotelRoom.find({ owner: req.user.id }).populate("owner", "name email mobile");
+    const rooms = await HotelRoom.find({ owner: req.user.id }).populate(
+      "owner",
+      "name email mobile"
+    );
     res.json(rooms);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -69,7 +63,10 @@ router.get("/my-rooms", authMiddleware, async (req, res) => {
 // ── PUBLIC: Get single room ──────────────────────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {
-    const room = await HotelRoom.findById(req.params.id).populate("owner", "name email mobile");
+    const room = await HotelRoom.findById(req.params.id).populate(
+      "owner",
+      "name email mobile"
+    );
     if (!room) return res.status(404).json({ message: "Room not found" });
     res.json(room);
   } catch (err) {
@@ -81,13 +78,19 @@ router.get("/:id", async (req, res) => {
 router.post("/", authMiddleware, upload.array("images", 20), async (req, res) => {
   try {
     const roomData = { ...req.body, owner: req.user.id };
-    // Parse amenities if sent as JSON string
+
     if (typeof roomData.amenities === "string") {
-      try { roomData.amenities = JSON.parse(roomData.amenities); } catch { roomData.amenities = []; }
+      try {
+        roomData.amenities = JSON.parse(roomData.amenities);
+      } catch {
+        roomData.amenities = [];
+      }
     }
-    if (req.files) {
-      roomData.images = req.files.map((file) => `/uploads/${file.filename}`);
+
+    if (req.files && req.files.length > 0) {
+      roomData.images = req.files.map((file) => file.path);
     }
+
     const room = new HotelRoom(roomData);
     await room.save();
     res.status(201).json(room);
@@ -107,14 +110,31 @@ router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) 
       if (key === "isPublic") {
         room[key] = req.body[key] === true || req.body[key] === "true";
       } else if (key === "amenities") {
-        try { room[key] = JSON.parse(req.body[key]); } catch { room[key] = []; }
+        try {
+          room[key] = JSON.parse(req.body[key]);
+        } catch {
+          room[key] = [];
+        }
       } else {
         room[key] = req.body[key];
       }
     });
 
     if (req.files && req.files.length > 0) {
-      room.images = req.files.map((f) => `/uploads/${f.filename}`);
+      // Delete old Cloudinary images
+      if (room.images && room.images.length > 0) {
+        for (const imgUrl of room.images) {
+          try {
+            const parts = imgUrl.split("/");
+            const folderAndFile = parts.slice(-2).join("/");
+            const publicId = folderAndFile.replace(/\.[^/.]+$/, "");
+            await cloudinary.uploader.destroy(publicId);
+          } catch (e) {
+            console.error("Failed to delete old Cloudinary image:", e);
+          }
+        }
+      }
+      room.images = req.files.map((f) => f.path);
     }
 
     const updatedRoom = await room.save();
@@ -138,14 +158,18 @@ router.delete("/:id", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Not authorized to delete this room" });
     }
 
+    // Delete images from Cloudinary
     if (room.images && room.images.length > 0) {
-      room.images.forEach((photo) => {
-        const filename = photo.split("/").pop();
-        const photoPath = path.join(process.cwd(), "uploads", filename);
-        fs.unlink(photoPath, (err) => {
-          if (err) console.log("Failed to delete photo:", err);
-        });
-      });
+      for (const imgUrl of room.images) {
+        try {
+          const parts = imgUrl.split("/");
+          const folderAndFile = parts.slice(-2).join("/");
+          const publicId = folderAndFile.replace(/\.[^/.]+$/, "");
+          await cloudinary.uploader.destroy(publicId);
+        } catch (e) {
+          console.error("Failed to delete Cloudinary image:", e);
+        }
+      }
     }
 
     await room.deleteOne();

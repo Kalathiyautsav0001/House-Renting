@@ -14,6 +14,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { API_BASE_URL, getImageUrl } from "../utils/api";
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -65,7 +66,7 @@ export default function RoomDetails() {
   useEffect(() => {
     const fetchRoom = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/rooms/${id}`);
+        const res = await axios.get(`${API_BASE_URL}/api/rooms/${id}`);
         setRoom(res.data);
         setLoading(false);
         fetchSimilar(res.data);
@@ -79,7 +80,7 @@ export default function RoomDetails() {
 
   const fetchSimilar = async (currentRoom) => {
     try {
-      const res = await axios.get("http://localhost:5000/api/rooms");
+      const res = await axios.get(`${API_BASE_URL}/api/rooms`);
       const filtered = res.data.filter(r => r._id !== currentRoom._id && (r.isPublic !== false));
       setSimilarRooms(filtered.slice(0, 3));
     } catch (err) {
@@ -201,7 +202,7 @@ export default function RoomDetails() {
                      {room.images.map((img, index) => (
                        <div key={index} className="outline-none relative aspect-[16/10] sm:aspect-video">
                          <img 
-                           src={`http://localhost:5000${img}`} 
+                           src={getImageUrl(img)} 
                            alt={`${room.title} - ${index + 1}`} 
                            className="w-full h-full object-cover" 
                          />
@@ -392,7 +393,7 @@ export default function RoomDetails() {
                  {similarRooms.map(r => (
                    <Link key={r._id} to={`/room/${r._id}`} className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300">
                       <div className="aspect-video relative overflow-hidden">
-                         <img src={`http://localhost:5000${r.images[0]}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={r.title} />
+                         <img src={getImageUrl(r.images[0])} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={r.title} />
                          <div className="absolute top-3 left-3 bg-purple-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg">
                             ₹{r.pricePerNight?.toLocaleString()}/n
                          </div>

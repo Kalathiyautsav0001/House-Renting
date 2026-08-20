@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import API from "../utils/api";
+import API, { getImageUrl } from "../utils/api";
 import {
   FaEdit,
   FaBuilding,
@@ -384,7 +384,7 @@ export default function EditCommercial() {
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                       {existingImages.map((img, i) => (
                         <div key={i} className="relative aspect-square rounded-xl overflow-hidden border-2 border-emerald-200">
-                          <img src={`http://localhost:5000${img}`} className="w-full h-full object-cover" />
+                          <img src={getImageUrl(img)} className="w-full h-full object-cover" />
                         </div>
                       ))}
                     </div>

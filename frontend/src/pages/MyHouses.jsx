@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import API from "../utils/api";
+import API, { getImageUrl } from "../utils/api";
 import Slider from "react-slick";
 import {
   FaEdit,
@@ -410,7 +410,7 @@ export default function MyHouses() {
                         {h.images.map((img, i) => (
                           <div key={i} className="h-52">
                             <img
-                              src={`http://localhost:5000${img}`}
+                              src={getImageUrl(img)}
                               alt={h.title}
                               className="w-full h-52 object-cover"
                             />
@@ -635,7 +635,7 @@ export default function MyHouses() {
                         {r.images.map((img, i) => (
                           <div key={i} className="h-52">
                             <img
-                              src={`http://localhost:5000${img}`}
+                              src={getImageUrl(img)}
                               alt={r.title}
                               className="w-full h-52 object-cover"
                             />
@@ -850,7 +850,7 @@ export default function MyHouses() {
                       <Slider {...carouselSettings}>
                         {c.images.map((img, i) => (
                           <div key={i} className="h-52">
-                            <img src={`http://localhost:5000${img}`} alt={c.title} className="w-full h-52 object-cover" />
+                            <img src={getImageUrl(img)} alt={c.title} className="w-full h-52 object-cover" />
                           </div>
                         ))}
                       </Slider>

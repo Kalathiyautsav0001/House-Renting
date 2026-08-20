@@ -14,6 +14,7 @@ import {
 import MarketplaceToggle from "../components/MarketplaceToggle";
 import HousesMapView from "../components/HousesMapView";
 import BackToTop from "../components/BackToTop";
+import { API_BASE_URL, getImageUrl } from "../utils/api";
 
 /* ─── Custom Dropdown ─── */
 const CustomDropdown = ({ value, onChange, options, label, icon: Icon, iconBg = "bg-blue-50", iconColor = "text-brand-blue" }) => {
@@ -108,7 +109,7 @@ export default function AllCommercial() {
 
   const fetchListings = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/commercial");
+      const res = await axios.get(`${API_BASE_URL}/api/commercial`);
       setListings(res.data);
       setLoading(false);
     } catch (err) {
@@ -299,7 +300,7 @@ export default function AllCommercial() {
                 className={`block relative aspect-video overflow-hidden ${listing.status !== 'available' ? 'cursor-default' : ''}`}
               >
                 <img 
-                  src={`http://localhost:5000${listing.images[0]}`} 
+                  src={getImageUrl(listing.images[0])} 
                   className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" 
                   alt={listing.title} 
                 />

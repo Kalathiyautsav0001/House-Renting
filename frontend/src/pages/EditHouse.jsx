@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import API from "../utils/api";
+import API, { getImageUrl } from "../utils/api";
 import {
   FaEdit,
   FaHome,
@@ -548,7 +548,7 @@ export default function EditHouse() {
                           className="relative aspect-square rounded-xl overflow-hidden border-2 border-emerald-200 shadow-sm"
                         >
                           <img
-                            src={`http://localhost:5000${img}`}
+                            src={getImageUrl(img)}
                             alt={`existing-${i}`}
                             className="w-full h-full object-cover"
                           />

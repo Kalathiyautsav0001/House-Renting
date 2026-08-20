@@ -80,7 +80,7 @@ export async function sendListingNotification(toEmail, house) {
                     <p style="font-size: 14px; color: #6b7280;">${house.houseType} • ${house.bedrooms} BHK • ${house.area} sqft</p>
                 </div>
 
-                <a href="http://localhost:5173/house/${house._id}" style="display: block; text-align: center; background: #4F46E5; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 16px;">View Details</a>
+                <a href="${process.env.FRONTEND_URL || 'https://house-renting-2.onrender.com'}/house/${house._id}" style="display: block; text-align: center; background: #4F46E5; color: white; padding: 14px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 16px;">View Details</a>
                 
                 <div style="margin-top: 40px; border-top: 1px solid #f0f0f0; padding-top: 20px;">
                     <p style="font-size: 12px; color: #9ca3af; text-align: center;">You are receiving this because you subscribed to listing alerts for ${house.location}.</p>

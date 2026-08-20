@@ -1,6 +1,17 @@
 import axios from "axios";
 
-const API = axios.create({ baseURL: "http://localhost:5000/api" });
+export const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+
+const API = axios.create({ baseURL: `${API_BASE_URL}/api` });
+
+// Helper to format image URLs (Cloudinary vs local uploads)
+export const getImageUrl = (imgPath) => {
+  if (!imgPath) return "";
+  if (imgPath.startsWith("http://") || imgPath.startsWith("https://")) {
+    return imgPath;
+  }
+  return `${API_BASE_URL}${imgPath.startsWith("/") ? "" : "/"}${imgPath}`;
+};
 
 // Add token automatically
 API.interceptors.request.use((req) => {

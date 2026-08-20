@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import API from "../utils/api";
+import API, { getImageUrl } from "../utils/api";
 import {
   FaTrash, FaCheckCircle, FaExclamationTriangle, FaEyeSlash, FaEye,
   FaHome, FaHotel, FaBuilding, FaUser, FaPhone, FaWhatsapp,
@@ -197,7 +197,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-3">
                           <div className="w-16 h-12 rounded-xl bg-gray-100 overflow-hidden flex-shrink-0 border border-gray-200">
                             {item.images?.[0]
-                              ? <img src={`http://localhost:5000${item.images[0]}`} className="w-full h-full object-cover" alt="" />
+                              ? <img src={getImageUrl(item.images[0])} className="w-full h-full object-cover" alt="" />
                               : <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl">
                                   {activeTab === "rooms" ? <FaHotel /> : activeTab === "commercials" ? <FaBuilding /> : <FaHome />}
                                 </div>

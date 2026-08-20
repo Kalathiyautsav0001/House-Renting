@@ -12,6 +12,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { API_BASE_URL, getImageUrl } from "../utils/api";
 
 // Fix for default marker icon in Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -43,7 +44,7 @@ export default function HouseDetails() {
   useEffect(() => {
     const fetchHouse = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/houses/${id}`);
+        const res = await axios.get(`${API_BASE_URL}/api/houses/${id}`);
         setHouse(res.data);
         setLoading(false);
         fetchSimilar(res.data);
@@ -57,7 +58,7 @@ export default function HouseDetails() {
 
   const fetchSimilar = async (currentHouse) => {
     try {
-      const res = await axios.get("http://localhost:5000/api/houses");
+      const res = await axios.get(`${API_BASE_URL}/api/houses`);
       const allHouses = res.data.filter(h => h.isPublic !== false && h.isPublic !== "false");
       
       // Filter out the current house
@@ -198,7 +199,7 @@ export default function HouseDetails() {
                      {house.images.map((img, index) => (
                        <div key={index} className="outline-none relative aspect-[16/10] sm:aspect-video">
                          <img 
-                           src={`http://localhost:5000${img}`} 
+                           src={getImageUrl(img)} 
                            alt={`${house.title} - ${index + 1}`} 
                            className="w-full h-full object-cover" 
                          />
@@ -407,7 +408,7 @@ export default function HouseDetails() {
                   <div key={simHouse._id} className="group bg-white rounded-[24px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_10px_40px_rgba(0,0,0,0.08)] transition-all duration-300 border border-gray-100 flex flex-col">
                     <Link to={`/house/${simHouse._id}`} className="block relative aspect-[4/3] overflow-hidden">
                       <img
-                        src={simHouse.images?.[0] ? `http://localhost:5000${simHouse.images[0]}` : "https://via.placeholder.com/400x300"}
+                        src={simHouse.images?.[0] ? getImageUrl(simHouse.images[0]) : "https://via.placeholder.com/400x300"}
                         className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700 ease-in-out"
                         alt={simHouse.title}
                       />

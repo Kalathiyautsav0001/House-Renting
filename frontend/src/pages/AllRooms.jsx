@@ -16,6 +16,7 @@ import MarketplaceToggle from "../components/MarketplaceToggle";
 import { MdOutlineBedroomParent } from "react-icons/md";
 import HousesMapView from "../components/HousesMapView";
 import BackToTop from "../components/BackToTop";
+import { API_BASE_URL, getImageUrl } from "../utils/api";
 
 /* ── Amenity icon map ─────────────────────────────────────────────────────── */
 const AMENITY_ICONS = {
@@ -122,7 +123,7 @@ export default function AllRooms() {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/rooms");
+      const res = await axios.get(`${API_BASE_URL}/api/rooms`);
       setRooms(res.data);
     } catch (err) {
       console.error(err);
@@ -347,14 +348,14 @@ export default function AllRooms() {
                       <Slider dots={false} infinite speed={600} slidesToShow={1} slidesToScroll={1} autoplay autoplaySpeed={4000} pauseOnHover arrows={false} className="h-full w-full">
                         {room.images.map((img, i) => (
                           <div key={i} className={`aspect-video outline-none ${room.status === "available" ? "cursor-pointer" : "cursor-default"}`} onClick={() => room.status === "available" && navigate(`/room/${room._id}`)}>
-                            <img src={`http://localhost:5000${img}`} className="object-cover w-full h-full" alt={`${room.title}-${i+1}`} />
+                            <img src={getImageUrl(img)} className="object-cover w-full h-full" alt={`${room.title}-${i+1}`} />
                           </div>
                         ))}
                       </Slider>
                     ) : (
                       <div className={`aspect-video ${room.status === "available" ? "cursor-pointer" : "cursor-default"}`} onClick={() => room.status === "available" && navigate(`/room/${room._id}`)}>
                         <img
-                          src={room.images?.[0] ? `http://localhost:5000${room.images[0]}` : "https://via.placeholder.com/400x300?text=Hotel+Room"}
+                          src={room.images?.[0] ? getImageUrl(room.images[0]) : "https://via.placeholder.com/400x300?text=Hotel+Room"}
                           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000"
                           alt={room.title}
                         />

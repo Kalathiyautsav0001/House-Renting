@@ -16,6 +16,7 @@ import {
 } from "react-icons/lu";
 import MarketplaceToggle from "../components/MarketplaceToggle";
 import BackToTop from "../components/BackToTop";
+import { API_BASE_URL, getImageUrl } from "../utils/api";
 
 /* ─── Custom Dropdown ─── */
 const CustomDropdown = ({ value, onChange, options, label, icon: Icon, iconBg = "bg-blue-50", iconColor = "text-brand-blue" }) => {
@@ -130,7 +131,7 @@ export default function AllHouses() {
 
   const fetchHouses = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/houses");
+      const res = await axios.get(`${API_BASE_URL}/api/houses`);
       setHouses(res.data);
       setLoading(false);
     } catch (err) {
@@ -410,14 +411,14 @@ export default function AllHouses() {
                       >
                         {house.images.map((img, i) => (
                           <div key={i} className={`aspect-video outline-none ${house.status === 'available' ? 'cursor-pointer' : 'cursor-default'}`} onClick={() => house.status === 'available' && navigate(`/house/${house._id}`)}>
-                            <img src={`http://localhost:5000${img}`} className="object-cover w-full h-full" alt={`${house.title} - ${i + 1}`} />
+                            <img src={getImageUrl(img)} className="object-cover w-full h-full" alt={`${house.title} - ${i + 1}`} />
                           </div>
                         ))}
                       </Slider>
                     ) : (
                       <div className={`aspect-video ${house.status === 'available' ? 'cursor-pointer' : 'cursor-default'}`} onClick={() => house.status === 'available' && navigate(`/house/${house._id}`)}>
                         <img
-                          src={house.images?.[0] ? `http://localhost:5000${house.images[0]}` : "https://via.placeholder.com/400x300"}
+                          src={house.images?.[0] ? getImageUrl(house.images[0]) : "https://via.placeholder.com/400x300"}
                           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-1000"
                           alt={house.title}
                         />

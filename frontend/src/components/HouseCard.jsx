@@ -145,6 +145,7 @@
 // ----------------after responsive
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
+import { getImageUrl } from "../utils/api";
 
 export default function HouseCard({ house, isOwner, onDelete }) {
   const carouselSettings = {
@@ -167,7 +168,7 @@ export default function HouseCard({ house, isOwner, onDelete }) {
                 className="h-40 overflow-hidden sm:h-52 md:h-64 lg:h-72"
               >
                 <img
-                  src={`http://localhost:5000${img}`}
+                  src={getImageUrl(img)}
                   alt={house.title}
                   className="object-cover w-full h-full"
                 />

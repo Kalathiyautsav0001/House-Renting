@@ -1,20 +1,11 @@
 import express from "express";
 import Commercial from "../models/Commercial.js";
 import authMiddleware from "../middleware/authMiddleware.js";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import { cloudinary, upload } from "../config/cloudinary.js";
 
 const router = express.Router();
 
-// Multer setup
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
-});
-const upload = multer({ storage });
-
-// Add commercial listing
+// ── PRIVATE: Add commercial listing ─────────────────────────────────────────
 router.post("/", authMiddleware, upload.array("images", 20), async (req, res) => {
   try {
     const commercialData = { ...req.body, owner: req.user.id };
@@ -27,8 +18,8 @@ router.post("/", authMiddleware, upload.array("images", 20), async (req, res) =>
       }
     }
 
-    if (req.files) {
-      commercialData.images = req.files.map((file) => `/uploads/${file.filename}`);
+    if (req.files && req.files.length > 0) {
+      commercialData.images = req.files.map((file) => file.path);
     }
 
     const listing = new Commercial(commercialData);
@@ -40,20 +31,26 @@ router.post("/", authMiddleware, upload.array("images", 20), async (req, res) =>
   }
 });
 
-// Get all commercial listings (public)
+// ── PUBLIC: Get all commercial listings ─────────────────────────────────────
 router.get("/", async (req, res) => {
   try {
-    const listings = await Commercial.find({ isPublic: { $ne: false }, adminHidden: { $ne: true } }).populate("owner", "name email mobile");
+    const listings = await Commercial.find({
+      isPublic: { $ne: false },
+      adminHidden: { $ne: true },
+    }).populate("owner", "name email mobile");
     res.json(listings);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get user's commercial listings
+// ── PRIVATE: Get user's commercial listings ──────────────────────────────────
 router.get("/my-commercial", authMiddleware, async (req, res) => {
   try {
-    const listings = await Commercial.find({ owner: req.user.id }).populate("owner", "name email mobile");
+    const listings = await Commercial.find({ owner: req.user.id }).populate(
+      "owner",
+      "name email mobile"
+    );
     res.json(listings);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -89,26 +86,29 @@ router.put("/admin/toggle-hide/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// GET single listing by id
+// ── PUBLIC: Get single listing by id ────────────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {
-    const listing = await Commercial.findById(req.params.id).populate("owner", "name email mobile");
-    if (!listing) {
-      return res.status(404).json({ message: "Listing not found" });
-    }
+    const listing = await Commercial.findById(req.params.id).populate(
+      "owner",
+      "name email mobile"
+    );
+    if (!listing) return res.status(404).json({ message: "Listing not found" });
     res.json(listing);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update commercial listing
-router.put("/:id", authMiddleware, upload.array("images", 5), async (req, res) => {
+// ── PRIVATE: Update commercial listing ──────────────────────────────────────
+router.put("/:id", authMiddleware, upload.array("images", 20), async (req, res) => {
   try {
-    const listing = await Commercial.findOne({ _id: req.params.id, owner: req.user.id });
+    const listing = await Commercial.findOne({
+      _id: req.params.id,
+      owner: req.user.id,
+    });
     if (!listing) return res.status(403).json({ error: "Not authorized or listing not found" });
 
-    // Update fields
     Object.keys(req.body).forEach((key) => {
       if (key === "isPublic") {
         listing[key] = req.body[key] === true || req.body[key] === "true";
@@ -123,9 +123,21 @@ router.put("/:id", authMiddleware, upload.array("images", 5), async (req, res) =
       }
     });
 
-    // Replace images only if new ones uploaded
     if (req.files && req.files.length > 0) {
-      listing.images = req.files.map((f) => `/uploads/${f.filename}`);
+      // Delete old Cloudinary images
+      if (listing.images && listing.images.length > 0) {
+        for (const imgUrl of listing.images) {
+          try {
+            const parts = imgUrl.split("/");
+            const folderAndFile = parts.slice(-2).join("/");
+            const publicId = folderAndFile.replace(/\.[^/.]+$/, "");
+            await cloudinary.uploader.destroy(publicId);
+          } catch (e) {
+            console.error("Failed to delete old Cloudinary image:", e);
+          }
+        }
+      }
+      listing.images = req.files.map((f) => f.path);
     }
 
     const updatedListing = await listing.save();
@@ -136,7 +148,7 @@ router.put("/:id", authMiddleware, upload.array("images", 5), async (req, res) =
   }
 });
 
-// Delete commercial listing
+// ── PRIVATE: Delete commercial listing ──────────────────────────────────────
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
     const listing = await Commercial.findById(req.params.id);
@@ -149,14 +161,18 @@ router.delete("/:id", authMiddleware, async (req, res) => {
       return res.status(403).json({ error: "Not authorized to delete this listing" });
     }
 
+    // Delete images from Cloudinary
     if (listing.images && listing.images.length > 0) {
-      listing.images.forEach((photo) => {
-        const filename = photo.split('/').pop();
-        const photoPath = path.join(process.cwd(), "uploads", filename);
-        fs.unlink(photoPath, (err) => {
-          if (err) console.log("Failed to delete photo:", err);
-        });
-      });
+      for (const imgUrl of listing.images) {
+        try {
+          const parts = imgUrl.split("/");
+          const folderAndFile = parts.slice(-2).join("/");
+          const publicId = folderAndFile.replace(/\.[^/.]+$/, "");
+          await cloudinary.uploader.destroy(publicId);
+        } catch (e) {
+          console.error("Failed to delete Cloudinary image:", e);
+        }
+      }
     }
 
     await listing.deleteOne();
