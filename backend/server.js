@@ -128,6 +128,18 @@ app.get("/", (req, res) => {
 // SERVER
 // ===============================
 
+// Global Error Handler (Catches Multer / Cloudinary / etc.)
+app.use((err, req, res, next) => {
+  console.error("❌ GLOBAL ERROR:", err);
+  console.error("Message:", err.message);
+  
+  res.status(500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    error: err.toString()
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

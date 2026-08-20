@@ -432,7 +432,8 @@ export default function AddHouse() {
       setTimeout(() => navigate(listingCategory === "hotel" ? "/rooms" : listingCategory === "business" ? "/business" : "/my-houses"), 1400);
     } catch (err) {
       console.error("Error adding listing:", err);
-      alert("Failed to add listing. Please try again.");
+      const backendError = err.response?.data?.message || err.response?.data?.error || err.message || "Unknown error occurred";
+      alert("Failed to add listing: " + backendError);
     } finally {
       setSaving(false);
     }
