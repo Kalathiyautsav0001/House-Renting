@@ -392,9 +392,7 @@ export default function AddHouse() {
             formData.append("images", images[i]);
           }
         }
-        await API.post("/houses", formData, {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-        });
+        await API.post("/houses", formData);
       } else if (listingCategory === "hotel") {
         const formData = new FormData();
         Object.keys(hotelForm).forEach((key) => {
@@ -408,9 +406,7 @@ export default function AddHouse() {
             formData.append("images", images[i]);
           }
         }
-        await API.post("/rooms", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await API.post("/rooms", formData);
       } else if (listingCategory === "business") {
         const formData = new FormData();
         Object.keys(businessForm).forEach((key) => {
@@ -423,9 +419,7 @@ export default function AddHouse() {
             formData.append("images", images[i]);
           }
         }
-        await API.post("/commercial", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await API.post("/commercial", formData);
       }
 
       setSaved(true);

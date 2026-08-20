@@ -274,9 +274,7 @@ export default function EditHouse() {
           formData.append("images", images[i]);
         }
       }
-      await API.put(`/houses/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await API.put(`/houses/${id}`, formData);
       setSaved(true);
       setTimeout(() => navigate("/my-houses"), 1200);
     } catch (err) {

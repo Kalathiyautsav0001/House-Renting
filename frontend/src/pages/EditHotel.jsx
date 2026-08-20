@@ -251,9 +251,7 @@ export default function EditHotel() {
         }
       }
 
-      await API.put(`/rooms/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      await API.put(`/rooms/${id}`, formData);
       setSaved(true);
       setTimeout(() => navigate("/my-houses"), 1200);
     } catch (err) {

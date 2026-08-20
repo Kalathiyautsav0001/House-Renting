@@ -241,7 +241,7 @@ export default function EditCommercial() {
       if (images) {
         for (let i = 0; i < images.length; i++) formData.append("images", images[i]);
       }
-      await API.put(`/commercial/${id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await API.put(`/commercial/${id}`, formData);
       setSaved(true);
       setTimeout(() => navigate("/my-houses"), 1200);
     } catch (err) {
